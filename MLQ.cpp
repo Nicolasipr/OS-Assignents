@@ -12,7 +12,9 @@ using namespace std;
 //  ===================================================
 //  GLOBAL VARIABLES 
 
-float QUANTUM = 2;  // set on 2, but it can be changed
+float QUANTUM = 2,  // set on 2, but it can be changed
+      current_Time = 0.0; 
+
 int N = 0;          // GV number of total processes  
 
 
@@ -22,15 +24,15 @@ int N = 0;          // GV number of total processes
 
 struct Process{
 
-    float priority = 0.0,
-          priority_type = 0.0,
-          burst_time = 0.0,
+    float burst_time = 0.0,
           waiting_time = 0.0,
           turnaroud_time = 0.0,
           remaining_time = 0.0,
           arrival_time = 0.0;
 
-    int proces_ID = 0;
+    int priority = 0,
+        priority_type = 0,
+    proces_ID = 0;
 
 };
 
@@ -64,12 +66,12 @@ void printQueueJobs(vector<Process> P);
 void queueSortingHandler(vector<Process> P);
 void copyJobToNewQueue(vector<Process> P, vector<Process> &New_Q, int i, int j);
 void queueActivationHandler();
-void RR();
-void Priority();
-void SJF();
-void FCFS();
-void calcWaitingTime();
-void calcTurnAroundTime();
+void RR(vector<Process> &P, int i);
+void Priority(vector<Process> P, int i);
+void SJF(vector<Process> P, int i);
+void FCFS(vector<Process> P, int i);
+void calcWaitingTime(vector<Process> P, int i);
+void calcTurnAroundTime(vector<Process> P, int i);
 void sortMerge(vector<Process> &P);
 void mergeHalves(vector<Process> &P,vector<Process> L, vector<Process> R);
 
@@ -95,7 +97,7 @@ void initProcess(){
         int   random_priority_queue = distr(gen), // Defines if which Queue belongs
               random_priority_scheduling = distr2(gen); // Define Priority for Priority Algorithms 
 
-        Ready_Queue.push_back(Process()); // Push bacj new Process created with default constructor
+        Ready_Queue.push_back(Process()); // Push back new Process created with default constructor
 
         Ready_Queue[i].arrival_time = random_arrival;
         Ready_Queue[i].burst_time   = random_burst_time;   
@@ -108,28 +110,124 @@ void initProcess(){
 
 void printQueueProps(vector<Process> P){
 
-    for(int i = 0 ; i < P.size(); i++){
+    if(P.size()){
 
+            for(int i = 0 ; i < P.size(); i++){
         cout    << "Job " << P[i].proces_ID << ": " << endl
                 << "| Arrival Time: "    <<   P[i].arrival_time << endl
                 << "| Burst Time: "      <<   P[i].burst_time << endl
                 << "| Priority: "        <<   P[i].priority << endl
-                << "| Priority Tupe: "   <<   P[i].priority_type << endl
+                << "| Priority Type: "   <<   P[i].priority_type << endl
                 << "| Turnaround Time: " <<   P[i].turnaroud_time << endl
                 << "| Waiting Time: "    <<   P[i].waiting_time << endl
                 << "| Remaining Time: "  <<   P[i].remaining_time << endl; 
+            }
+
+
     }
+
+
 }
 
 void printQueueJobs(vector<Process> P){
 
-    for(int i = P.size() - 1 ; i >= 0; i--){
+    if(P.size()){
+        
+        for(int i = P.size() - 1 ; i >= 0; i--){
         cout << "| Job " << P[i].proces_ID << " ";
+        }
+
+        cout << "|" << endl;
+
     }
-    cout << "|" << endl;
+
+    
 }
 
 void queueActivationHandler(){
+
+    int h = 0, // queue 1
+        j = 0, // queue 2
+        k = 0, // queue 3
+        l = 0; // queue 4
+
+
+    if(Ready_Queue[0].priority_type == 1){
+        cout <<  "IF" << endl; 
+        
+        current_Time += Ready_Queue[0].arrival_time + Ready_Queue[0].burst_time;
+        RR(Ready_Queue,0);
+        copyJobToNewQueue(Ready_Queue, Gantt_Queue, 0,0);
+        Queue_1.erase(Queue_1.begin());
+        printQueueJobs(Gantt_Queue);
+
+
+    } 
+    else{
+        cout << "Else" << endl;
+        current_Time += Ready_Queue[0].arrival_time + Ready_Queue[0].burst_time ;
+        copyJobToNewQueue(Ready_Queue, Gantt_Queue, 0,0);
+
+        switch ( Ready_Queue[0].priority_type)
+        {
+            case 2:
+                cout << "Case 1" << endl;
+                Queue_2.erase(Queue_2.begin());
+                break;
+            case 3:
+                cout << "Case 1" << endl;
+                Queue_3.erase(Queue_3.begin());
+                break;
+            case 4:
+                cout << "Case 1" << endl;
+                Queue_4.erase(Queue_4.begin());
+                break;
+        
+            default:
+                break;
+        }
+
+        Ready_Queue.erase(Ready_Queue.begin());
+        printQueueJobs(Gantt_Queue);
+
+    }
+    cout << "While" << endl;
+
+    while(Ready_Queue.size()){
+        printQueueJobs(Gantt_Queue);
+
+
+        if(Queue_1.size() && current_Time >= Queue_1[h].arrival_time){
+        cout <<  "IF1" << endl; 
+
+            RR(Queue_1,h);
+
+        }
+        else if(Queue_2.size() && current_Time >= Queue_2[j].arrival_time){
+            cout <<  "IF 2" << endl;
+            Priority(Queue_2,j);
+            
+        }
+        else if(Queue_3.size() && current_Time >= Queue_1[k].arrival_time){
+            cout <<  "IF 3" << endl;
+            SJF(Queue_3, k);
+            
+        }
+        else if(Queue_4.size() && current_Time >= Queue_1[l].arrival_time){
+            cout <<  "IF 4" << endl;
+            FCFS(Queue_4,l);
+            
+
+        }     
+        else{
+            current_Time += QUANTUM;  
+            if(Queue_1.size())
+            copyJobToNewQueue(Queue_1,Gantt_Queue,0, Gantt_Queue.size());
+        }   
+        
+        
+
+    }
 
 
 
@@ -140,20 +238,21 @@ void queueSortingHandle(vector<Process> P){
 
     for(int i = 0; i < P.size(); i++){
 
-                 if (P[i].priority_type == 1 ){
+                 if (P[i].priority_type == 1 ){ // Round Robin
+                     P[i].remaining_time = P[i].burst_time;
                     copyJobToNewQueue(P, Queue_1, i,h);
                     h++;
                  }
                     
-                else if (P[i].priority_type == 2 ){
+                else if (P[i].priority_type == 2 ){ // Priority 
                     copyJobToNewQueue(P, Queue_2, i,j);
                     j++;
                 }
-                else if (P[i].priority_type == 3){
+                else if (P[i].priority_type == 3){ // SJF
                     copyJobToNewQueue(P, Queue_3, i,k);
                     k++;
                 }
-                else if (P[i].priority_type == 4 ){
+                else if (P[i].priority_type == 4 ){ // FCFS
                     copyJobToNewQueue(P, Queue_4, i,l);
                     l++;
                 } 
@@ -178,23 +277,62 @@ void copyJobToNewQueue(vector<Process> P, vector<Process> &New_Q, int i, int m){
 //  CPU Scheduling Functions and Methods
 
 
-void RR(){
+void RR(vector<Process> &P, const int i){ // per process
+
+    if( current_Time >= P[i].arrival_time  && P[i].remaining_time > 0 ){
+        
+        copyJobToNewQueue(P, Gantt_Queue, i, Gantt_Queue.size());
+        current_Time += QUANTUM;
+        P[i].remaining_time -= QUANTUM;
+        if (P[i].remaining_time <= 0){
+            P.erase(P.begin()+i); // Does this work ?
+        }
+
+    }
+
     
 
 }
-void Priority(){
+void Priority(vector<Process> P, int i){
+
+    if(current_Time >= P[i].arrival_time){
+        copyJobToNewQueue(P, Gantt_Queue, i, Gantt_Queue.size());
+    
+        current_Time += P[0].burst_time;
+        P.erase(P.begin());
+        Ready_Queue.erase(Ready_Queue.begin());
+    }
+}
+void SJF(vector<Process> P, int i){
+
+    if(current_Time >= P[i].arrival_time){
+        copyJobToNewQueue(P, Gantt_Queue, i, Gantt_Queue.size());
+        current_Time += P[0].burst_time;
+        P.erase(P.begin());
+        Ready_Queue.erase(Ready_Queue.begin());
+    }
 
 }
-void SJF(){
+void FCFS(vector<Process> P, int i){
+
+    if(current_Time >= P[i].arrival_time){
+        copyJobToNewQueue(P, Gantt_Queue, i, Gantt_Queue.size());
+        current_Time += P[0].burst_time;
+        P.erase(P.begin());
+        Ready_Queue.erase(Ready_Queue.begin());
+    }
 
 }
-void FCFS(){
+void calcWaitingTime(vector<Process> P, int i){
 
+    for(int i = 0; i < P.size() ; i++)
+        P[i].waiting_time = P[i - 1].waiting_time + P[i - 1].burst_time;
 }
-void calcWaitingTime(){
+void calcTurnAroundTime(vector<Process> P, int i){
 
-}
-void calcTurnAroundTime(){
+    for(int i = 0; i < P.size() ; i++)
+        P[i].turnaroud_time = P[i].waiting_time + P[i].burst_time;
+
 
 }
 
@@ -274,12 +412,7 @@ int main(){
     cout << "Jobs:" << endl << endl;
     printQueueJobs(Ready_Queue);
 
-    // sortMerge(Ready_Queue);
-
-    // cout << "Sorted Queue: " << endl; 
-
-    // printQueueJobs(Ready_Queue);
-
+    
     queueSortingHandle(Ready_Queue);
 
 
@@ -309,6 +442,16 @@ int main(){
     cout << "First Come First Served:" << endl;
     cout << "Jobs Order <---:" << endl << endl;
     printQueueJobs(Queue_4);
+
+    cout << "Ready queue 0: "<< Ready_Queue[0].proces_ID << endl;
+    // cout << "Gantt queue 0: "<< Gantt_Queue[0].proces_ID << endl;
+
+
+    queueActivationHandler();
+
+    printQueueJobs(Gantt_Queue);
+
+    cout << "Current Time: " << current_Time; 
 
     return 0;
 }
