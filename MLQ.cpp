@@ -73,8 +73,8 @@ void FCFS(vector<Process> P, int i);
 void calcWaitingTime(vector<Process> P, int i);
 void calcTurnAroundTime(vector<Process> P, int i);
 void sortMerge(vector<Process> &P);
-void mergeHalves(vector<Process> &P,vector<Process> L, vector<Process> R);
-
+void mergeHalvesJobs(vector<Process> &P,vector<Process> L, vector<Process> R);
+void mergeHalvesPriority(vector<Process> &P,vector<Process> L, vector<Process> R);
 
 //  ===================================================
 //  Functions and Useful handlers
@@ -102,6 +102,7 @@ void initProcess(){
         Ready_Queue[i].arrival_time = random_arrival;
         Ready_Queue[i].burst_time   = random_burst_time;   
         Ready_Queue[i].priority_type = random_priority_queue;
+        Ready_Queue[i].remaining_time = Ready_Queue[i].burst_time;
         if(random_priority_queue == 2) // It sets only prioriry for priority algorithm
             Ready_Queue[i].priority = random_priority_scheduling; 
         Ready_Queue[i].proces_ID = i+1;
@@ -141,7 +142,7 @@ void printQueueJobs(vector<Process> P){
 
     }
 
-    
+    cout << endl << endl;
 }
 
 void queueActivationHandler(){
@@ -150,36 +151,94 @@ void queueActivationHandler(){
         j = 0, // queue 2
         k = 0, // queue 3
         l = 0; // queue 4
-
+    bool RR_interrupt = false;
 
     if(Ready_Queue[0].priority_type == 1){
         cout <<  "IF" << endl; 
         
         current_Time += Ready_Queue[0].arrival_time + Ready_Queue[0].burst_time;
         RR(Ready_Queue,0);
-        copyJobToNewQueue(Ready_Queue, Gantt_Queue, 0,0);
-        Queue_1.erase(Queue_1.begin());
-        printQueueJobs(Gantt_Queue);
+        while(Queue_1.size() && RR_interrupt == false){
 
+            for(int i = 0; i < Queue_1.size(); i++){
+                RR(Queue_1,i); 
+                if(Queue_1[i + 1].proces_ID != 0 || current_Time <= Queue_1[i + 1].arrival_time ){
 
-    } 
+                    RR_interrupt = true;
+                    break;
+                    }
+                    
+                }
+
+            }
+            copyJobToNewQueue(Ready_Queue, Gantt_Queue, 0,0);
+            // Queue_1.erase(Queue_1.begin());
+            printQueueJobs(Gantt_Queue);
+        }
+            
     else{
         cout << "Else" << endl;
-        current_Time += Ready_Queue[0].arrival_time + Ready_Queue[0].burst_time ;
+        if(Queue_1.size() && Ready_Queue[0].priority_type == 1){
+
+            if( Ready_Queue[0].arrival_time >= Queue_1[0].arrival_time // if process arrives in the middle of the executiom, 
+            && Queue_1[0].arrival_time <= Ready_Queue[0].burst_time ){ // pauses it and proceeds to activate the important one     
+
+            cout << "Else IF 1 " << endl;
+            current_Time += Queue_1[0].arrival_time - Ready_Queue[0].arrival_time;
+            Ready_Queue[0].remaining_time -= Queue_1[0].arrival_time;    
+            }
+
+        }else if(Queue_2.size() && Ready_Queue[0].priority_type == 2){
+
+            if( Ready_Queue[0].arrival_time >= Queue_2[0].arrival_time // if process arrives in the middle of the executiom, 
+            && Queue_2[0].arrival_time <= Ready_Queue[0].burst_time ){ // pauses it and proceeds to activate the important one     
+
+            cout << "Else IF 2 " << endl;
+            current_Time += Queue_2[0].arrival_time - Ready_Queue[0].arrival_time;
+            Ready_Queue[0].remaining_time -= Queue_2[0].arrival_time;    
+            }
+
+        }else
+        if(Queue_3.size() && Ready_Queue[0].priority_type == 3){
+
+            if( Ready_Queue[0].arrival_time >= Queue_3[0].arrival_time // if process arrives in the middle of the executiom, 
+            && Queue_3[0].arrival_time <= Ready_Queue[0].burst_time ){ // pauses it and proceeds to activate the important one     
+            cout << "Else IF 3 " << endl;
+            current_Time += Queue_3[0].arrival_time - Ready_Queue[0].arrival_time;
+            Ready_Queue[0].remaining_time -= Queue_3[0].arrival_time;    
+            }
+
+        }else
+        if(Queue_4.size() && Ready_Queue[0].priority_type == 4){
+
+            if( Ready_Queue[0].arrival_time >= Queue_4[0].arrival_time // if process arrives in the middle of the executiom, 
+            && Queue_4[0].arrival_time <= Ready_Queue[0].burst_time ){ // pauses it and proceeds to activate the important one     
+            cout << "Else IF 4 " << endl;
+            
+            current_Time += Queue_4[0].arrival_time - Ready_Queue[0].arrival_time;
+            Ready_Queue[0].remaining_time -= Queue_4[0].arrival_time;    
+            }
+
+        }else 
+        
+        // current_Time += Ready_Queue[0].arrival_time + Ready_Queue[0].burst_time ;
         copyJobToNewQueue(Ready_Queue, Gantt_Queue, 0,0);
 
         switch ( Ready_Queue[0].priority_type)
         {
             case 2:
-                cout << "Case 1" << endl;
+                cout << "Case 2" << endl;
+                if(Queue_2[0].remaining_time <= 0)
                 Queue_2.erase(Queue_2.begin());
                 break;
             case 3:
-                cout << "Case 1" << endl;
+                cout << "Case 3" << endl;
+                if(Queue_3[0].remaining_time <= 0)
                 Queue_3.erase(Queue_3.begin());
                 break;
             case 4:
-                cout << "Case 1" << endl;
+                cout << "Case 4" << endl;
+                if(Queue_4[0].remaining_time <= 0)
                 Queue_4.erase(Queue_4.begin());
                 break;
         
@@ -197,23 +256,22 @@ void queueActivationHandler(){
         printQueueJobs(Gantt_Queue);
 
 
-        if(Queue_1.size() && current_Time >= Queue_1[h].arrival_time){
-        cout <<  "IF1" << endl; 
-
+        if( Ready_Queue[0].priority_type == 1 && Queue_1.size() && current_Time >= Queue_1[h].arrival_time){
+            cout <<  "IF1" << endl; 
             RR(Queue_1,h);
 
         }
-        else if(Queue_2.size() && current_Time >= Queue_2[j].arrival_time){
+        else if(Ready_Queue[0].priority_type == 2 && Queue_2.size() && current_Time >= Queue_2[j].arrival_time){
             cout <<  "IF 2" << endl;
             Priority(Queue_2,j);
             
         }
-        else if(Queue_3.size() && current_Time >= Queue_1[k].arrival_time){
+        else if(Ready_Queue[0].priority_type == 3 && Queue_3.size() && current_Time >= Queue_1[k].arrival_time){
             cout <<  "IF 3" << endl;
             SJF(Queue_3, k);
             
         }
-        else if(Queue_4.size() && current_Time >= Queue_1[l].arrival_time){
+        else if(Ready_Queue[0].priority_type == 4 && Queue_4.size() && current_Time >= Queue_1[l].arrival_time){
             cout <<  "IF 4" << endl;
             FCFS(Queue_4,l);
             
@@ -238,8 +296,8 @@ void queueSortingHandle(vector<Process> P){
 
     for(int i = 0; i < P.size(); i++){
 
+
                  if (P[i].priority_type == 1 ){ // Round Robin
-                     P[i].remaining_time = P[i].burst_time;
                     copyJobToNewQueue(P, Queue_1, i,h);
                     h++;
                  }
@@ -286,6 +344,7 @@ void RR(vector<Process> &P, const int i){ // per process
         P[i].remaining_time -= QUANTUM;
         if (P[i].remaining_time <= 0){
             P.erase(P.begin()+i); // Does this work ?
+            Ready_Queue.erase(Ready_Queue.begin());
         }
 
     }
@@ -298,7 +357,7 @@ void Priority(vector<Process> P, int i){
     if(current_Time >= P[i].arrival_time){
         copyJobToNewQueue(P, Gantt_Queue, i, Gantt_Queue.size());
     
-        current_Time += P[0].burst_time;
+        current_Time += P[0].remaining_time;
         P.erase(P.begin());
         Ready_Queue.erase(Ready_Queue.begin());
     }
@@ -307,7 +366,7 @@ void SJF(vector<Process> P, int i){
 
     if(current_Time >= P[i].arrival_time){
         copyJobToNewQueue(P, Gantt_Queue, i, Gantt_Queue.size());
-        current_Time += P[0].burst_time;
+        current_Time += P[0].remaining_time;
         P.erase(P.begin());
         Ready_Queue.erase(Ready_Queue.begin());
     }
@@ -317,7 +376,7 @@ void FCFS(vector<Process> P, int i){
 
     if(current_Time >= P[i].arrival_time){
         copyJobToNewQueue(P, Gantt_Queue, i, Gantt_Queue.size());
-        current_Time += P[0].burst_time;
+        current_Time += P[0].remaining_time;
         P.erase(P.begin());
         Ready_Queue.erase(Ready_Queue.begin());
     }
@@ -340,24 +399,35 @@ void calcTurnAroundTime(vector<Process> P, int i){
 //  SORTING 
 
 
-void sortMerge(vector<Process> &P){ 
+void sortMerge(vector<Process> &P, int type){ 
 
     if( 1 < P.size()){
 
         vector<Process> left_temp_vector(P.begin(), P.begin() + P.size() / 2 );
-        sortMerge(left_temp_vector);
+        sortMerge(left_temp_vector, type);
 
         vector<Process> right_temp_vector(P.begin() + P.size() / 2 , P.end());
-        sortMerge(right_temp_vector);
+        sortMerge(right_temp_vector, type);
+        switch (type)
+        {
+            case 1: // Sorting Priority
+                mergeHalvesPriority(P, left_temp_vector, right_temp_vector);
+                break;
+            case 2: // sorting jobs
+                mergeHalvesJobs(P, left_temp_vector, right_temp_vector);
+                break;
 
-        mergeHalves(P, left_temp_vector, right_temp_vector);
+            default:
+                break;
+        }
+        
     }
 
 }
 
-//  merge Priority 
+//  merge Priority  case 1 
 
-void mergeHalves(vector<Process> &P, vector<Process> Left, vector<Process> Right){
+void mergeHalvesPriority(vector<Process> &P, vector<Process> Left, vector<Process> Right){
 
     P.clear();
     int i, j, index; 
@@ -385,6 +455,38 @@ void mergeHalves(vector<Process> &P, vector<Process> Left, vector<Process> Right
     }
 
 }
+
+//  merge Shortest Jobs   case 2
+
+void mergeHalvesJobs(vector<Process> &P, vector<Process> Left, vector<Process> Right){
+
+    P.clear();
+    int i, j, index; 
+
+    for(i = 0, j = 0, index = 0; i < Left.size() && j < Right.size(); index++ ){
+
+        if(Left[i].burst_time <= Right[j].burst_time) {
+                   P.push_back(Left.at(i));
+                     i++;
+        }
+        else if(Left[i].burst_time > Right[j].burst_time ){
+            P.push_back(Right.at(j));
+            j++;
+        }
+        index++;
+    }
+
+    while( i < Left.size()){
+        P.push_back(Left.at(i));
+        i++;
+    }
+    while( j < Right.size()){
+        P.push_back(Right.at(j));
+        j++;
+    }
+
+}
+
 
 //  ===================================================
 //  Main 
@@ -421,35 +523,30 @@ int main(){
     // cout << "Processes 1:" << endl << endl;
     // printQueueProps(Queue_1);
     cout << "Round Robin:" << endl;
-    cout << "Jobs Order :" << endl << endl;
     printQueueJobs(Queue_1);
 
     //  cout << "Processes 2:" << endl << endl;
     // printQueueProps(Queue_2);
     cout << "Priority Order" << endl;
-    cout << "Jobs Order :" << endl << endl;
     printQueueJobs(Queue_2);
 
     //  cout << "Processes 3:" << endl << endl;
     // printQueueProps(Queue_3);
     cout << "Shortest Job First:" << endl;
-    cout << "Jobs Order:" << endl << endl;
     printQueueJobs(Queue_3);
 
 
     //  cout << "Processes 4:" << endl << endl;
     // printQueueProps(Queue_4);
     cout << "First Come First Served:" << endl;
-    cout << "Jobs Order <---:" << endl << endl;
     printQueueJobs(Queue_4);
 
-    cout << "Ready queue 0: "<< Ready_Queue[0].proces_ID << endl;
-    // cout << "Gantt queue 0: "<< Gantt_Queue[0].proces_ID << endl;
 
 
     queueActivationHandler();
 
     printQueueJobs(Gantt_Queue);
+    printQueueProps(Gantt_Queue);
 
     cout << "Current Time: " << current_Time; 
 
